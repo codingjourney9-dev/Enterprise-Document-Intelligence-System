@@ -1,0 +1,294 @@
+###
+# AI-Powered Knowledge Hub
+# REST Client Test Suite
+# Compatible with VS Code REST Client extension
+#
+# This file demonstrates the API behavior of the system and verifies:
+# - User management endpoints
+# - Document CRUD operations
+# - RBAC enforcement
+# - Input validation behavior
+#
+# Expected status codes are documented for each request.
+###
+
+### ============================================
+### CONFIGURATION
+### ============================================
+
+@baseUrl = http://localhost:8080
+@adminRole = ADMIN
+@userRole = USER
+@userId =eff9e14f-7a8f-4cfc-9045-d7d41385415a
+@docId =ac29b81b-c9b5-4798-8c9f-523447b20da3
+
+###
+### ============================================
+### SECTION: USER MANAGEMENT
+### ============================================
+
+### Create User (Admin)
+# Expected: 201 Created
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "name": "Admin User",
+  "role": "ADMIN"
+}
+
+### Create User (Regular User)
+# Expected: 201 Created
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "name": "Regular User",
+  "role": "USER"
+}
+
+### Get All Users
+# Expected: 200 OK
+GET {{baseUrl}}/users
+
+### Update User Role (USER → ADMIN)
+# Expected: 200 OK
+PUT {{baseUrl}}/users/{{userId}}/role?role=ADMIN
+
+###
+### ============================================
+### SECTION: DOCUMENT MANAGEMENT
+### ============================================
+
+### Create Document (ADMIN only)
+# Expected: 201 Created
+POST {{baseUrl}}/documents?role={{adminRole}}
+Content-Type: application/json
+
+{
+  "name": "Company Policy Manual",
+  "uploader": "Admin User",
+  "type": "POLICY",
+  "filePath": "/storage/policy-2026.pdf",
+  "contentText": "This is a sample policy document containing important company guidelines and regulations."
+}
+
+### Create Document (Report Example)
+# Expected: 201 Created
+POST {{baseUrl}}/documents?role={{adminRole}}
+Content-Type: application/json
+
+{
+  "name": "Q1 Financial Report",
+  "uploader": "Finance Team",
+  "type": "REPORT",
+  "filePath": "/storage/q1-2026-report.pdf",
+  "contentText": "Q1 2026 showed a 15% increase in revenue. Key metrics: 5M units sold, 2.3B revenue."
+}
+
+### Create Document (Manual Example)
+# Expected: 201 Created
+POST {{baseUrl}}/documents?role={{adminRole}}
+Content-Type: application/json
+
+{
+  "name": "API Integration Guide",
+  "uploader": "Engineering",
+  "type": "MANUAL",
+  "filePath": "/storage/api-guide-v1.pdf",
+  "contentText": "Step 1: Install SDK. Step 2: Initialize client. Step 3: Call endpoints."
+}
+
+### Get All Documents (ADMIN only)
+# Expected: 200 OK
+GET {{baseUrl}}/documents?role={{adminRole}}
+
+### Get Document by ID (ADMIN only)
+# Expected: 200 OK or 404 Not Found
+GET {{baseUrl}}/documents/{{docId}}?role={{adminRole}}
+
+### Delete Document (ADMIN only)
+# Expected: 204 No Content
+DELETE {{baseUrl}}/documents/{{docId}}?role={{adminRole}}
+
+###
+### ============================================
+### SECTION: RBAC NEGATIVE TESTS
+### ============================================
+
+### Missing Role Parameter
+# Expected: 400 Bad Request
+POST {{baseUrl}}/documents
+Content-Type: application/json
+
+{
+  "name": "Will Fail - No Role",
+  "uploader": "Test User",
+  "type": "POLICY",
+  "filePath": "/storage/fail-no-role.pdf"
+}
+
+### Invalid Role Value
+# Expected: 400 Bad Request
+GET {{baseUrl}}/documents?role=SUPERADMIN
+
+### USER Attempting to Create Document
+# Expected: 403 Forbidden
+POST {{baseUrl}}/documents?role={{userRole}}
+Content-Type: application/json
+
+{
+  "name": "Unauthorized Document",
+  "uploader": "Regular User",
+  "type": "POLICY",
+  "filePath": "/storage/unauthorized.pdf"
+}
+
+### USER Attempting to Delete Document
+# Expected: 403 Forbidden
+DELETE {{baseUrl}}/documents/{{docId}}?role={{userRole}}
+
+### USER Attempting to List Documents
+# Expected: 403 Forbidden
+GET {{baseUrl}}/documents?role={{userRole}}
+
+###
+### ============================================
+### SECTION: INPUT VALIDATION TESTS
+### ============================================
+
+### Document with Blank Name
+# Expected: 400 Bad Request
+POST {{baseUrl}}/documents?role={{adminRole}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "uploader": "Test User",
+  "type": "POLICY",
+  "filePath": "/storage/blank-name.pdf"
+}
+
+### Document with Blank Uploader
+# Expected: 400 Bad Request
+POST {{baseUrl}}/documents?role={{adminRole}}
+Content-Type: application/json
+
+{
+  "name": "Valid Name",
+  "uploader": "",
+  "type": "POLICY",
+  "filePath": "/storage/blank-uploader.pdf"
+}
+
+### Document with Blank FilePath
+# Expected: 400 Bad Request
+POST {{baseUrl}}/documents?role={{adminRole}}
+Content-Type: application/json
+
+{
+  "name": "Valid Name",
+  "uploader": "Valid Uploader",
+  "type": "POLICY",
+  "filePath": ""
+}
+
+### Duplicate filePath
+# Expected: 400 Bad Request
+POST {{baseUrl}}/documents?role={{adminRole}}
+Content-Type: application/json
+
+{
+  "name": "Duplicate Path Document",
+  "uploader": "Test User",
+  "type": "POLICY",
+  "filePath": "/storage/policy-2026.pdf"
+}
+
+### User with Blank Name
+# Expected: 400 Bad Request
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "name": "",
+  "role": "USER"
+}
+
+### User with Missing Role
+# Expected: 400 Bad Request
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "name": "User Without Role"
+}
+
+### Update Role for Non-Existing User
+# Expected: 404 Not Found
+PUT {{baseUrl}}/users/00000000-0000-0000-0000-000000000000/role?role=ADMIN
+
+###
+### ============================================
+### SECTION: DOCUMENT QA AND SUMMARY
+### ============================================
+
+### Get Document Summary (ADMIN)
+# Expected: 200 OK
+GET {{baseUrl}}/documents/731a175f-773d-462a-860d-f455c5a882e3/summary?role={{adminRole}}
+
+### Get Document Summary (USER)
+# Expected: 200 OK
+GET {{baseUrl}}/documents/{{docId}}/summary?role={{userRole}}
+
+### Ask Question About Document (USER)
+# Expected: 200 OK
+POST {{baseUrl}}/documents/31656a31-c4b3-4762-ab1d-d8870e95f508/questions?role={{userRole}}
+Content-Type: application/json
+
+{
+  "question": "What are the key points of this document?"
+}
+
+### Ask Question About Document (ADMIN)
+# Expected: 200 OK
+POST {{baseUrl}}/documents/{{docId}}/questions?role={{adminRole}}
+Content-Type: application/json
+
+{
+  "question": "Summarize the main rules."
+}
+
+### Ask Question With Blank Question
+# Expected: 400 Bad Request
+POST {{baseUrl}}/documents/{{docId}}/questions?role={{userRole}}
+Content-Type: application/json
+
+{
+  "question": ""
+}
+
+### Ask Question For Non Existing Document
+# Expected: 404 Not Found
+POST {{baseUrl}}/documents/00000000-0000-0000-0000-000000000000/questions?role={{userRole}}
+Content-Type: application/json
+
+{
+  "question": "Does this document exist?"
+}
+
+###
+### ============================================
+### HOW TO RUN THESE TESTS
+### ============================================
+
+# 1. Start the Spring Boot application:
+#    mvn spring-boot:run
+
+# 2. After creating a user, copy the returned UUID and paste it into @userId.
+
+# 3. After creating a document, copy the returned UUID and paste it into @docId.
+
+# 4. Use the VS Code REST Client extension to send requests.
+
+# 5. Verify responses match the expected HTTP status codes defined above.
